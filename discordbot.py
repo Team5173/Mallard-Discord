@@ -44,7 +44,7 @@ async def on_ready():
 #Messages channel when given certain commands
 async def on_message(message):
     if message.content.startswith('!frc'):
-        count = 5
+        count = int(input('Count?'))
         await client.send_message(message.channel, frcTweets('FIRSTweets', count))
 #Discord Bot Authentication data
 client.run('Mzk3Mjc1Njg3OTY4NTcxMzkz.DSwZ9g.-wb7f3c_MK38dH5kR60hGiFpfhU')
