@@ -22,14 +22,13 @@ def userTweets(screen_name):
     '''
 
     alltweets = []	
-    alltweets = api.user_timeline(screen_name = screen_name,count = 2)
+    alltweets = api.user_timeline(screen_name = screen_name,count = 5)
     outtweets = [tweet.id_str for tweet in alltweets]
     urls = str()
     with open('storedTweets.txt', 'r+') as myfile:
         openedTweets = str(myfile.read())
         for i in range(len(outtweets)):
             tempVar = str(outtweets[i])
-            print(tempVar)
             if tempVar not in openedTweets:
                 myfile.seek(0, 2)
                 myfile.write(str(outtweets[i]) + ' ')
