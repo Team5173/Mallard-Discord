@@ -24,12 +24,20 @@ team = str()
 
 
 def messageTokenizor(message):
-
-
+    '''
+    Requires: 
+    Modifies: Nothing
+    Effects: 
+    '''
     tokens = nltk.word_tokenize(message)
     return tokens
 
-def timeTillEvents(team_number):
+def timeTillEvents(team_key):
+    '''
+    Requires: 
+    Modifies: Nothing
+    Effects: 
+    '''
     now = datetime.datetime.now()
     team_events = requests.get(base_url + '/team/' + team + '/events', header).json()
     count_down = []
@@ -94,31 +102,29 @@ def getMatchTime(match):
     time = full_date[:-10]
     message = time + ' on ' + date
     return message
-def getRank(team_number):
-    '''
-    Requires: team_number is an integer, valid frc team number
-    Modifies: Nothing
-    Effects: returns string with given team's current rank at their most recent event
-    '''
-    event = getNextEvent(team_number)
-    eventKey = event['key']
-    rankings = requests.get(base_url + '/event/' + eventKey + '/rankings', header).json()
-    for i in range(len(rankings['rankings'])):
-        if rankings['rankings'][i]['team_key'] == team_number:
-            return 'Team ' + team + ' is currently rank ' + rankings['rankings'][i]['rank'] + ' at the ' + event['name'] + ' event.'
 
-def teamInfo(team_number):
+def teamInfo(team_key):
     '''
     Requires: 
     Modifies: Nothing
     Effects: 
     '''
+    event = getNextEvent(team_key)
+    message = ('Team ' + team[3:] + ' has been a member of FIRST Robotics for ' + numYears(team_key)
+    + '. They are currently ranked ' + str(getDistrictRank(team_key)) + ' in their district, '
+    + getTeamDistrict(team_key) + ' and rank ' + str(getEventRank(team_key)) + ' at their most recent event, with a WTL record of')
+    return message
+
+def numYears(team_key):
+    '''
+    Requires: 
+    Modifies: Nothing
+    Effects: 
+    '''
+
+    years = requests.get(base_url + '/team/' + team_key + '/years_participated', header).json()
     
-    event = getNextEvent(team)
-    message = ('Team ' + team + ' has been a member of FIRST Robotics for' + numYears(team_number)
-    + '. They are currently ranked ' + getDistrictRank(team) + ' in their district, ' + getTeamDistrict(team))
-
-
+    return str(len(years)) + ' year(s)'
 
 def nextMatchInfo(match):
     '''
@@ -130,8 +136,42 @@ def nextMatchInfo(match):
     message = ('Team ' + team[3:] + '\'s next match, number ' + str(match['match_number']) + ' at '
     + event['name'] + ', begins in ' + getTimeTillMatch(match) + ' at ' + str(getMatchTime(match))
     + ' on the ' + getAllianceColor(match) + ' alliance with alliance members ' + getAllianceMembers(match)
-    + ' against' + oppositeAlliance(match) + matchPrediction(match))
+    + ' against' + oppositeAlliance(match) + predictionMessage(matchPrediction(match)))
     return message
+
+def predictionMessage(match_prediction):
+    '''
+    Requires: 
+    Modifies: Nothing
+    Effects: 
+    '''
+    winner = match_prediction['winning_alliance']
+    message = (winner +  ' alliance predicted to win with a score of '
+               + str(int(match_prediction[winner]['score'])) + '-'
+               + str(int(match_prediction[oppositeColor(winner)]['score'])))
+    
+    return message
+
+def matchPrediction(match):
+    '''
+    Requires: 
+    Modifies: Nothing
+    Effects: 
+    '''
+    event = getNextEvent(team)
+    #event_key = event['key']
+    event_key = '2017miwmi'
+    match_key = match['key']
+    predictions = requests.get(base_url + '/event/' + event_key + '/predictions', header).json()
+    print(match_key)
+    match_prediction = []
+    for key in predictions['match_predictions']['playoff'].keys():
+        if key == match_key:
+            match_prediction = predictions['match_predictions']['playoff'][key] 
+    for key in predictions['match_predictions']['qual'].keys():
+        if key == match_key:
+            match_prediction = predictions['match_predictions']['qual'][key]
+    return match_prediction
 
 def getTimeTillMatch(match):
     '''
@@ -146,8 +186,10 @@ def getTimeTillMatch(match):
     days = (weeks % 1) * 7
     hours = (days % 1) * 24
     minutes = (hours % 1) * 60
-    message = str(int(weeks)) + ' weeks ' + str(int(days)) + ' days ' + str(int(hours)) + ' hours ' + str(int(minutes)) + ' minutes '
+    message = (str(int(weeks)) + ' weeks ' + str(int(days)) + ' days '
+    + str(int(hours)) + ' hours ' + str(int(minutes)) + ' minutes ')
     return message
+
 def getAllianceColor(match):
     '''
     Requires: 
@@ -172,10 +214,12 @@ def getAllianceMembers(match):
     color = getAllianceColor(match)
     if color == 'blue':
         for i in range(len(match['alliances']['blue']['team_keys'])):
-            alli += ' ' + match['alliances']['blue']['team_keys'][i][3:] + ', '
+            alli += (' Team ' + match['alliances']['blue']['team_keys'][i][3:] + ', '
+                     + getEventRank(match['alliances']['blue']['team_keys'][i]))            
     else:
         for i in range(len(match['alliances']['red']['team_keys'])):
-            alli += ' ' + match['alliances']['red']['team_keys'][i][3:] + ', '
+            alli += (' Team ' + match['alliances']['red']['team_keys'][i][3:] + ', '
+                     + getEventRank(match['alliances']['red']['team_keys'][i]))
     return alli
         
 def oppositeAlliance(match):
@@ -188,21 +232,22 @@ def oppositeAlliance(match):
     color = getAllianceColor(match)
     if color == 'blue':
         for i in range(len(match['alliances']['red']['team_keys'])):
-            opp += ' ' + match['alliances']['red']['team_keys'][i][3:] +', '
+            opp += (' Team ' + match['alliances']['red']['team_keys'][i][3:] +', '
+                    + getEventRank(match['alliances']['red']['team_keys'][i]))
     else:
         for i in range(len(match['alliances']['blue']['team_keys'])):
-            opp += ' ' + match['alliances']['blue']['team_keys'][i][3:] + ', '
-
+            opp += (' Team ' + match['alliances']['blue']['team_keys'][i][3:] + ', '
+                    + getEventRank(match['alliances']['blue']['team_keys'][i]))
     return opp
 
-def getNextMatch(team_number):
+def getNextMatch(team_key):
     '''
-    Requires: team_number is an integer, valid frc team number
+    Requires: team_key is an integer, valid frc team number
     Modifies: Nothing
     Effects: returns string with given team's next match at their current or closest event
     '''
 
-    event = getNextEvent(team_number)
+    event = getNextEvent(team_key)
     match_times = []
     now = datetime.datetime.now()
     stamp = int(now.timestamp())
@@ -219,24 +264,87 @@ def getNextMatch(team_number):
         if (key < smallest):
             smallest = key
     return times[smallest]
-    
-def getMatchPrediction(team_number):
+
+def oppositeColor(color):
     '''
-    Requires: team_number is an integer, valid frc team number
+    Requires: 
     Modifies: Nothing
-    Effects: returns string with given team's 
+    Effects: 
     '''
-    
-def getMatchResult(match_number):
+    if color == 'red':
+        return 'blue'
+    else:
+        return 'red'
+
+def getMatchResult(match):
     '''
-    Requires: match_number is an integer, valid match
+    Requires: 
     Modifies: Nothing
-    Effects: returns string with result of given match
+    Effects: 
     '''
+    members = str()
+    enemy = str()
+    match_num = match['match_number']
+    winningAlliance = match['winning-alliance']
+    for i in range(len(match['alliances'][winningAlliance]['team_keys'])):
+        members += (' ' + match['alliances'][winningAlliance]['team_keys'][i][3:] + ', '
+                    + ' rank ' + getEventRank(match['alliances'][winningAlliance]['team_keys'][i]))
+    for i in range(len(match['alliances'][oppositeColor(winningAlliance)]['team_keys'])):
+        enemy += (' ' + match['alliances'][oppositeColor(winningAlliance)]['team_keys'][i][3:] + ', '
+                    + ' rank ' + getEventRank(match['alliances'][oppositeColor(winningAlliance)]['team_keys'][i]))
+
+    if winningAlliance == 'blue':
+        score = match['alliances'][winningAlliance]['score'] + '-' + match['alliances']['red']['score']
+    else:
+        score = match['alliances'][winningAlliance]['score'] + '-' + match['alliances']['blue']['score']
+               
+    message = ('Match number ' + match_num + ' concluded with a ' + winningAlliance
+               + ' win, with alliance members' + members + 'victorious over '
+               + oppositeColor(winningAlliance) + ' alliance, with members ' + enemy)
+    return message
+               
+def getEventRank(team_key):
+    '''
+    Requires: 
+    Modifies: Nothing
+    Effects: 
+    '''
+    event = getNextEvent(team_key)
+    #eventKey = event['key']
+    eventKey = '2017miwmi'
+    rankings = requests.get(base_url + '/event/' + eventKey + '/rankings', header).json()
+    for i in range(len(rankings['rankings'])):
+        if rankings['rankings'][i]['team_key'] == team_key:
+            return ' currently rank ' + str(rankings['rankings'][i]['rank']) + ', '
+
+def getTeamDistrict(team_key):
+    '''
+    Requires: 
+    Modifies: Nothing
+    Effects: 
+    '''
+    now = datetime.datetime.now()
+    districts = requests.get(base_url + '/team/' + team_key + '/districts', header).json()
+    for i in range(len(districts)):
+        if districts[i]['year'] == now.year:
+            return districts[i]['key']
+                     
+def getDistrictRank(team_key):
+    '''
+    Requires: 
+    Modifies: Nothing
+    Effects: 
+    '''
+    #district_key = getTeamDistrict(team_key)
+    district_key = '2017fim'
+    rankings = requests.get(base_url + '/district/' + district_key + '/rankings', header).json()
+    for i in range(len(rankings)):
+        if rankings[i]['team_key'] == team_key:
+            return rankings[i]['rank']
     
-def getNextEvent(team_number):
+def getNextEvent(team_key):
     '''
-    Requires: team_number is an integer, valid frc team number
+    Requires: team_key is an integer, valid frc team number
     Modifies: Nothing
     Effects: returns event object for given team's next event
     '''
@@ -310,17 +418,19 @@ async def on_message(message):
     global team
     if message.content.startswith('!frc-tweets'):
         count = int(input('Count?'))
-        await client.send_message(message.channel, userTweets('FIRSTweets', count))
+        await client.send_message(message.channel, userTweets(count))
     if message.content.startswith('!getChannel'):
         await client.send_message(message.channel, getChannel('frc-tweets'))
     if message.content.startswith('!TeamRank'):
-        await client.send_message(message.channel, getRank(team))
-    if message.content.startswith('!NextMatchTime'):
-        await client.send_message(message.channel, getMatchTime(team))
-    if message.content.startswith('!NextMatchPrediction'):
-        await client.send_message(message.channel, getMatchPrediction(team))
+        await client.send_message(message.channel, getEventRank(team))
+    if message.content.startswith('!TeamDistrict'):
+        await client.send_message(message.channel, getDistrictRank(team))
+    if message.content.startswith('!TeamStats'):
+        await client.send_message(message.channel, teamInfo(team))
     if message.content.startswith('!MatchResult'):
-        await client.send_message(message.channel, getMatchResult(match_number))
+        text = messageTokenizor(message.content)
+        match_key = text[2]
+        await client.send_message(message.channel, getMatchResult(match_key))
     if message.content.startswith('!Countdown'):
         print(team)
         await client.send_message(message.channel, timeTillEvents(team))
