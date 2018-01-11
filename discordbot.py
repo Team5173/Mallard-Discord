@@ -25,50 +25,82 @@ team = str()
 
 def messageTokenizor(message):
     '''
-    Requires: 
+    Requires: message is a string
     Modifies: Nothing
-    Effects: 
+    Effects: uses nltk to 'tokenize' then return the input message
     '''
+    #tokenizes the given string
     tokens = nltk.word_tokenize(message)
+    #returns tokenized message
     return tokens
 
 def timeTillEvents(team_key):
+    '''
+    Requires: team_key is a valid TBA FRC team_key
+    Modifies: Nothing
+    Effects: Returns a string with countdowns until all of a teams event's this year
+    '''
+    #sets the current time using the datetime lib
+    now = datetime.datetime.now()
+    #creates a list of FRC events for the given team using TBA api and the python requests lib
+    team_events = requests.get(base_url + '/team/' + team_key + '/events', header).json()
+    #list of countdowns that will be populated later
+    count_down = []
+    #loops through the given team's events
+    for year in range(len(team_events)):
+        #checks it's a district event
+        if team_events[year]['district'] != None:
+            #checks that the given event is taking place this year
+            if int(team_events[year]['district']['year']) == int(now.year):
+                #sets the date of the event
+                event_date = team_events[year]['start_date']
+                current_month = now.month
+                current_day = now.day
+                #isolates the event month from the event_date string
+                event_month = event_date[5:-3]
+                #isolates the event day of the month from the event_date string
+                event_day = event_date[8:]
+                #gets the number of days in the current month
+                current_month_days = calendar.monthrange(int(now.year), int(now.month))[1]
+                
+                if int(current_day) > int(event_day):
+                    days_till = ((int(current_month_days) - int(current_day)) + (int(event_day) - 1)) - 2
+                    months_till = int(event_month) - int(current_month) - 1
+                else:
+                    days_till = (int(event_day) - int(current_day))
+                    months_till = int(event_month) - int(current_month)
+                count = '\n' + str(months_till) + ' months ' + str(days_till) + ' days until ' + str(team_events[year]['name'])
+                count_down.append(count)
+    #reorders the list of countdown till events in chronological order
+    count_down.reverse()
+    newMessage = str()
+    for i in range(len(count_down)):
+        newMessage += str(count_down[i])
+    return newMessage
+
+def timeTillEvent(event_key):
     '''
     Requires: 
     Modifies: Nothing
     Effects: 
     '''
     now = datetime.datetime.now()
-    team_events = requests.get(base_url + '/team/' + team + '/events', header).json()
     count_down = []
-    for year in range(len(team_events)):
-        if team_events[year]['district'] != None:
-            if int(team_events[year]['district']['year']) == int(now.year):
-                event_date = team_events[year]['start_date']
-                current_month = now.month
-                current_day = now.day
-                event_month = event_date[5:-3]
-                event_day = event_date[8:]
-                current_month_days = calendar.monthrange(int(now.year), int(now.month))[1]
-                if int(current_day) > int(event_day):
-                    print('current bigger')
-                    print(str(team_events[year]['name']))
-                    print(event_date)
-                    days_till = ((int(current_month_days) - int(current_day)) + (int(event_day) - 1)) - 2
-                    months_till = int(event_month) - int(current_month) - 1
-                else:
-                    print('current smaller')
-                    print(str(team_events[year]['name']))
-                    print(event_date)
-                    days_till = (int(event_day) - int(current_day))
-                    months_till = int(event_month) - int(current_month)
-                count = '\n' + str(months_till) + ' months ' + str(days_till) + ' days until ' + str(team_events[year]['name'])
-                count_down.append(count)
-    count_down.reverse()
-    newMessage = str()
-    for i in range(len(count_down)):
-        newMessage += str(count_down[i])
-    return newMessage
+    event = requests.get(base_url + '/event/' + event_key, header).json()
+    event_date = event['start_date']
+    current_month = now.month
+    current_day = now.day
+    event_month = event_date[5:-3]
+    event_day = event_date[8:]
+    current_month_days = calendar.monthrange(int(now.year), int(now.month))[1]
+    if int(current_day) > int(event_day):
+        days_till = ((int(current_month_days) - int(current_day)) + (int(event_day) - 1)) - 2
+        months_till = int(event_month) - int(current_month) - 1
+    else:
+        days_till = (int(event_day) - int(current_day))
+        months_till = int(event_month) - int(current_month)
+    message = '\n' + str(months_till) + ' months ' + str(days_till) + ' days'
+    return message
 
 def userTweets(screen_name):
     '''
@@ -88,7 +120,6 @@ def userTweets(screen_name):
                 myfile.seek(0, 2)
                 myfile.write(str(outtweets[i]) + ' ')
                 urls += '\n' + 'https://twitter.com/' + screen_name + '/status/' + outtweets[i]
-    print(urls)
     return urls
 
 def getMatchTime(match):
@@ -110,10 +141,21 @@ def teamInfo(team_key):
     Effects: 
     '''
     event = getNextEvent(team_key)
-    message = ('Team ' + team[3:] + ' has been a member of FIRST Robotics for ' + numYears(team_key)
-    + '. They are currently ranked ' + str(getDistrictRank(team_key)) + ' in their district, '
-    + getTeamDistrict(team_key) + ' and rank ' + str(getEventRank(team_key)) + ' at their most recent event, with a WTL record of')
+    message = ('Team ' + team[3:] + ', ' + teamName(team_key) + ', '
+               + ' has been a member of FIRST Robotics for ' + numYears(team_key)
+               + '. They are currently ranked ' + str(getDistrictRank(team_key)) + ' in their district, '
+               + getTeamDistrict(team_key) + ' and ' + str(getEventRank(team_key))
+               + ' at their most recent event, with a WTL record of ' + winTieLoss(team_key))
     return message
+
+def teamName(team_key):
+    '''
+    Requires: 
+    Modifies: Nothing
+    Effects: 
+    '''
+    nickname = requests.get(base_url + '/team/' + team_key, header).json()
+    return nickname['nickname']
 
 def numYears(team_key):
     '''
@@ -123,8 +165,22 @@ def numYears(team_key):
     '''
 
     years = requests.get(base_url + '/team/' + team_key + '/years_participated', header).json()
-    
     return str(len(years)) + ' year(s)'
+
+def winTieLoss(team_key):
+    '''
+    Requires: 
+    Modifies: Nothing
+    Effects: 
+    '''
+    event_key = '2017miwmi'
+    events = requests.get(base_url + '/team/' + team_key + '/event/' + event_key + '/status', header).json()
+    wtl = events['qual']['ranking']['record']
+    wins = wtl['wins']
+    losses = wtl['losses']
+    ties = wtl['ties']
+    winTieLoss = (str(wins) + '-' + str(ties) + '-' + str(losses))
+    return winTieLoss
 
 def nextMatchInfo(match):
     '''
@@ -137,6 +193,16 @@ def nextMatchInfo(match):
     + event['name'] + ', begins in ' + getTimeTillMatch(match) + ' at ' + str(getMatchTime(match))
     + ' on the ' + getAllianceColor(match) + ' alliance with alliance members ' + getAllianceMembers(match)
     + ' against' + oppositeAlliance(match) + predictionMessage(matchPrediction(match)))
+    return message
+
+def nextEventInfo():
+    '''
+    Requires: 
+    Modifies: Nothing
+    Effects: 
+    '''
+    event = getNextEvent(team)
+    message = 'Team ' + team[3:] + '\'s next event, ' + event['name'] + ' at ' + event['location_name'] + ' in ' + timeTillEvent(event['key'])
     return message
 
 def predictionMessage(match_prediction):
@@ -163,7 +229,6 @@ def matchPrediction(match):
     event_key = '2017miwmi'
     match_key = match['key']
     predictions = requests.get(base_url + '/event/' + event_key + '/predictions', header).json()
-    print(match_key)
     match_prediction = []
     for key in predictions['match_predictions']['playoff'].keys():
         if key == match_key:
@@ -215,10 +280,12 @@ def getAllianceMembers(match):
     if color == 'blue':
         for i in range(len(match['alliances']['blue']['team_keys'])):
             alli += (' Team ' + match['alliances']['blue']['team_keys'][i][3:] + ', '
+                     + teamName(match['alliances']['blue']['team_keys'][i])  + ', '
                      + getEventRank(match['alliances']['blue']['team_keys'][i]))            
     else:
         for i in range(len(match['alliances']['red']['team_keys'])):
             alli += (' Team ' + match['alliances']['red']['team_keys'][i][3:] + ', '
+                     + teamName(match['alliances']['red']['team_keys'][i])  + ', '
                      + getEventRank(match['alliances']['red']['team_keys'][i]))
     return alli
         
@@ -233,10 +300,12 @@ def oppositeAlliance(match):
     if color == 'blue':
         for i in range(len(match['alliances']['red']['team_keys'])):
             opp += (' Team ' + match['alliances']['red']['team_keys'][i][3:] +', '
+                    + teamName(match['alliances']['red']['team_keys'][i])  + ', '
                     + getEventRank(match['alliances']['red']['team_keys'][i]))
     else:
         for i in range(len(match['alliances']['blue']['team_keys'])):
             opp += (' Team ' + match['alliances']['blue']['team_keys'][i][3:] + ', '
+                    + teamName(match['alliances']['blue']['team_keys'][i])  + ', '
                     + getEventRank(match['alliances']['blue']['team_keys'][i]))
     return opp
 
@@ -328,7 +397,19 @@ def getTeamDistrict(team_key):
     for i in range(len(districts)):
         if districts[i]['year'] == now.year:
             return districts[i]['key']
-                     
+
+def getTeamDistrictName(team_key):
+    '''
+    Requires: 
+    Modifies: Nothing
+    Effects: 
+    '''
+    now = datetime.datetime.now()
+    districts = requests.get(base_url + '/team/' + team_key + '/districts', header).json()
+    for i in range(len(districts)):
+        if districts[i]['year'] == now.year:
+            return districts[i]['display_name']
+
 def getDistrictRank(team_key):
     '''
     Requires: 
@@ -432,18 +513,17 @@ async def on_message(message):
         match_key = text[2]
         await client.send_message(message.channel, getMatchResult(match_key))
     if message.content.startswith('!Countdown'):
-        print(team)
         await client.send_message(message.channel, timeTillEvents(team))
     if message.content.startswith('!setTeam'):
         text = messageTokenizor(message.content)
         team = text[2]
         team = 'frc' + team
-        await client.send_message(message.channel, 'Team was set to ' + text[2])
+        await client.send_message(message.channel, 'Team was set to ' + text[2] + ', ' + teamName(team))
     if message.content.startswith('!NextEvent'):
-        await client.send_message(message.channel, getNextEvent(team))
+        await client.send_message(message.channel, nextEventInfo())
     if message.content.startswith('!NextMatch'):
         await client.send_message(message.channel, nextMatchInfo(getNextMatch(team)))
+    if message.content.startswith('!LastCommit'):
+        await client.send_message(message.channel, lastCommit())
 #Discord Bot Authentication data
 client.run('Mzk3Mjc1Njg3OTY4NTcxMzkz.DSwZ9g.-wb7f3c_MK38dH5kR60hGiFpfhU')
-
-
