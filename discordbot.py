@@ -7,19 +7,13 @@ import requests
 import calendar
 import nltk
 
-#'Tweepy' Twitter API authentication data
-consumer_key = 'otXd4O6dMglxjVBcYYNXuf1Hn'
-consumer_secret = 'p6TFg2g9fqZZSvdWTmisuEknB9DlZTdv8A4QLCQ1mJPN9yU3bM'
-access_key = '947878329708941313-kvHprQA9TsHGGTgMeKUDQdfIC2WYf5e'
-access_secret = 'b53m9a8gx58k3RSziF8SShHZu0lx7bFNRThjAoRNya7wa'
-
-auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
-auth.set_access_token(access_key, access_secret)
-api = tweepy.API(auth)
+with open('discordToken.txt', 'r+') as myfile:
+        token = str(myfile.read())
+with open('TBAkey.txt', 'r+') as myfile:
+        TBAkey = str(myfile.read())
 
 base_url = 'https://www.thebluealliance.com/api/v3'
-header = {'X-TBA-Auth-Key': '15BE7yn8Vl4sRULbIgyRlMwMJRR3d5NRRygVxBOoICx0tQjhr7KhWKPwsPOdYJwP'}
-
+header = {'X-TBA-Auth-Key': TBAkey}
 team = str()
 
 
@@ -81,18 +75,26 @@ def timeTillEvents(team_key):
 def timeTillEvent(event_key):
     '''
     Requires: 
-    Modifies: Nothing
     Effects: 
     '''
+    #Sets the current time
     now = datetime.datetime.now()
     count_down = []
+    #Gets the event object from TBA
     event = requests.get(base_url + '/event/' + event_key, header).json()
+    #Gets the date the event takes place on
     event_date = event['start_date']
+    #Gets the current month 
     current_month = now.month
+    #Gets the current day of the month
     current_day = now.day
+    #Gets the event month
     event_month = event_date[5:-3]
+    #Gets the day of the month of the event
     event_day = event_date[8:]
+    #Gets the total number of days in the current month
     current_month_days = calendar.monthrange(int(now.year), int(now.month))[1]
+    
     if int(current_day) > int(event_day):
         days_till = ((int(current_month_days) - int(current_day)) + (int(event_day) - 1)) - 2
         months_till = int(event_month) - int(current_month) - 1
@@ -105,30 +107,40 @@ def timeTillEvent(event_key):
 def userTweets(screen_name):
     '''
     Requires: screen_name is a valid twitter handle, count is an int > 0, < 200
-    Modifies: Nothing
     Effects: fetches urls of last 'count' tweets from input user
     '''
-    alltweets = []	
+    #Create empty list to store user tweets
+    alltweets = []
+    #fills list with given user tweets
     alltweets = api.user_timeline(screen_name = screen_name,count = 5)
+    #populates new list with the ID of each tweet in alltweets
     outtweets = [tweet.id_str for tweet in alltweets]
     urls = str()
+    #Opens a file that stores list of tweets that have already been sent
     with open('storedTweets.txt', 'r+') as myfile:
+        #Reads the contents of the text file into a python object
         openedTweets = str(myfile.read())
+        #Iterates through the list of tweet IDs
         for i in range(len(outtweets)):
+            #Sets a temporary variable to the current ID being referenced by the iterator
             tempVar = str(outtweets[i])
+            #Checks that that ID is not in the text file log
             if tempVar not in openedTweets:
+                #Writes the current ID to the end of the text file
                 myfile.seek(0, 2)
                 myfile.write(str(outtweets[i]) + ' ')
-                urls += '\n' + 'https://twitter.com/' + screen_name + '/status/' + outtweets[i]
+                #Uses the ID  to add to a string of URLs
+                urls += '\n' + 'https://twitter.com/' + str(screen_name) + '/status/' + str(outtweets[i])
     return urls
 
 def getMatchTime(match):
     '''
     Requires: match is a match object, valid frc team number
-    Modifies: Nothing
     Effects: Returns string match time
     '''
+    #Gets the date and time of a given match, in UNIX time, and converts to human readable time
     full_date = datetime.datetime.fromtimestamp(match['predicted_time']).strftime('%H:%M:%S %Y-%m-%d')
+    #Parse full_date, breaking it up into date and time
     date = full_date[8:]
     time = full_date[:-10]
     message = time + ' on ' + date
@@ -137,10 +149,11 @@ def getMatchTime(match):
 def teamInfo(team_key):
     '''
     Requires: 
-    Modifies: Nothing
     Effects: 
     '''
+    #Gets the next event for the given team
     event = getNextEvent(team_key)
+    #Contsructs a message about the given team's stats
     message = ('Team ' + team[3:] + ', ' + teamName(team_key) + ', '
                + ' has been a member of FIRST Robotics for ' + numYears(team_key)
                + '. They are currently ranked ' + str(getDistrictRank(team_key)) + ' in their district, '
@@ -151,30 +164,32 @@ def teamInfo(team_key):
 def teamName(team_key):
     '''
     Requires: 
-    Modifies: Nothing
     Effects: 
     '''
+    #Gets the team nickname, like "Roborangers", "NC Gears", or "Robohawks"
     nickname = requests.get(base_url + '/team/' + team_key, header).json()
     return nickname['nickname']
 
 def numYears(team_key):
     '''
     Requires: 
-    Modifies: Nothing
     Effects: 
     '''
-
+    #Gets the number of years the team has been a member of FIRST
     years = requests.get(base_url + '/team/' + team_key + '/years_participated', header).json()
     return str(len(years)) + ' year(s)'
 
 def winTieLoss(team_key):
     '''
     Requires: 
-    Modifies: Nothing
     Effects: 
     '''
+    #Gets event key of latest event 
+    #event_key = getNextEvent(team_key)
     event_key = '2017miwmi'
+    #Get team stats at event
     events = requests.get(base_url + '/team/' + team_key + '/event/' + event_key + '/status', header).json()
+    #Gets team WTL at event
     wtl = events['qual']['ranking']['record']
     wins = wtl['wins']
     losses = wtl['losses']
@@ -185,16 +200,28 @@ def winTieLoss(team_key):
 def nextMatchInfo(match):
     '''
     Requires: 
-    Modifies: Nothing
     Effects: 
     '''
     event = getNextEvent(team)
+
+    embed=discord.Embed(title='**' + team[3:] + ' next match, number ' + str(match['match_number']) + '**', color=0x1cead6)
+    embed.add_field(name='__Time Till Match:__', value=getTimeTillMatch(match), inline=False)
+    embed.add_field(name='__Match Start Time:__', value=str(getMatchTime(match)), inline=True)
+    #embed.add_field(name='Match Start Date', value=xxxx-xx-xx, inline=True)
+    embed.add_field(name='__Alliance Color:__', value=getAllianceColor(match)[0].upper() + getAllianceColor(match)[1:], inline=False)
+    embed.add_field(name='__Red Alliance Members:__', value=getAllianceMembers(match), inline=True)
+    embed.add_field(name='__Blue Alliance Members:__', value=oppositeAlliance(match), inline=True)
+    embed.add_field(name='__Match Prediction:__', value=predictionMessage(matchPrediction(match)), inline=False)
+
+    return embed
+"""  
     message = ('Team ' + team[3:] + '\'s next match, number ' + str(match['match_number']) + ' at '
     + event['name'] + ', begins in ' + getTimeTillMatch(match) + ' at ' + str(getMatchTime(match))
     + ' on the ' + getAllianceColor(match) + ' alliance with alliance members ' + getAllianceMembers(match)
     + ' against' + oppositeAlliance(match) + predictionMessage(matchPrediction(match)))
     return message
-
+"""
+    
 def nextEventInfo():
     '''
     Requires: 
@@ -211,6 +238,9 @@ def predictionMessage(match_prediction):
     Modifies: Nothing
     Effects: 
     '''
+    if match_prediction == 'none':
+        message = 'There is currently no match perdiction available.'
+        return message
     winner = match_prediction['winning_alliance']
     message = (winner +  ' alliance predicted to win with a score of '
                + str(int(match_prediction[winner]['score'])) + '-'
@@ -229,6 +259,9 @@ def matchPrediction(match):
     event_key = '2017miwmi'
     match_key = match['key']
     predictions = requests.get(base_url + '/event/' + event_key + '/predictions', header).json()
+    if predictions is None:
+        return 'none'
+    
     match_prediction = []
     for key in predictions['match_predictions']['playoff'].keys():
         if key == match_key:
@@ -237,6 +270,7 @@ def matchPrediction(match):
         if key == match_key:
             match_prediction = predictions['match_predictions']['qual'][key]
     return match_prediction
+    
 
 def getTimeTillMatch(match):
     '''
@@ -416,9 +450,12 @@ def getDistrictRank(team_key):
     Modifies: Nothing
     Effects: 
     '''
+    #Gets team's district
     #district_key = getTeamDistrict(team_key)
     district_key = '2017fim'
+    #Gets ranks in district
     rankings = requests.get(base_url + '/district/' + district_key + '/rankings', header).json()
+    #return team's rank in district
     for i in range(len(rankings)):
         if rankings[i]['team_key'] == team_key:
             return rankings[i]['rank']
@@ -426,7 +463,6 @@ def getDistrictRank(team_key):
 def getNextEvent(team_key):
     '''
     Requires: team_key is an integer, valid frc team number
-    Modifies: Nothing
     Effects: returns event object for given team's next event
     '''
     now = datetime.datetime.now()
@@ -469,21 +505,7 @@ def getChannel(channelName):
         for channel in server.channels:
             if channel.name == channelName:
                 return channel
-'''
-@client.event
-async def autoTweet(destination, screen_name):
-    message = userTweets(screen_name)
-    if message != '':
-        await client.send_message(destination, content = message )
-
-@client.event
-async def autoSetup():
-    screen_name = input('User?')
-    channelID = getChannel(input('Channel?'))
-    while(True):
-        await autoTweet(channelID, screen_name)
-        time.sleep(2)
-'''
+            
 @client.event
 #Console Feedback
 async def on_ready():
@@ -491,39 +513,37 @@ async def on_ready():
     print(client.user.name)
     print(client.user.id)
     print('------')
-    #await autoSetup()
     
 @client.event
 #Messages channel when given certain commands
 async def on_message(message):
     global team
+    
     if message.content.startswith('!frc-tweets'):
-        count = int(input('Count?'))
-        await client.send_message(message.channel, userTweets(count))
-    if message.content.startswith('!getChannel'):
-        await client.send_message(message.channel, getChannel('frc-tweets'))
-    if message.content.startswith('!TeamRank'):
+        count = int(input('Screen name??'))
+        await client.send_message(message.channel, userTweets(screen_name))
+    if message.content.startswith('mal! rank'):
         await client.send_message(message.channel, getEventRank(team))
-    if message.content.startswith('!TeamDistrict'):
+    if message.content.startswith('mal! district'):
         await client.send_message(message.channel, getDistrictRank(team))
-    if message.content.startswith('!TeamStats'):
+    if message.content.startswith('mal! team stats'):
         await client.send_message(message.channel, teamInfo(team))
-    if message.content.startswith('!MatchResult'):
+    if message.content.startswith('mal! match result'):
         text = messageTokenizor(message.content)
-        match_key = text[2]
+        match_key = text[5]
         await client.send_message(message.channel, getMatchResult(match_key))
-    if message.content.startswith('!Countdown'):
+    if message.content.startswith('mal! countdown'):
         await client.send_message(message.channel, timeTillEvents(team))
-    if message.content.startswith('!setTeam'):
+    if message.content.startswith('mal! set team'):
         text = messageTokenizor(message.content)
-        team = text[2]
+        team = text[5]
         team = 'frc' + team
-        await client.send_message(message.channel, 'Team was set to ' + text[2] + ', ' + teamName(team))
-    if message.content.startswith('!NextEvent'):
+        await client.send_message(message.channel, 'Team was set to ' + text[5] + ', ' + teamName(team))
+    if message.content.startswith('mal! next event'):
         await client.send_message(message.channel, nextEventInfo())
-    if message.content.startswith('!NextMatch'):
-        await client.send_message(message.channel, nextMatchInfo(getNextMatch(team)))
+    if message.content.startswith('mal! next match'):
+        await client.send_message(message.channel, embed=nextMatchInfo(getNextMatch(team)))
     if message.content.startswith('!LastCommit'):
         await client.send_message(message.channel, lastCommit())
 #Discord Bot Authentication data
-client.run('Mzk3Mjc1Njg3OTY4NTcxMzkz.DSwZ9g.-wb7f3c_MK38dH5kR60hGiFpfhU')
+client.run(token)
