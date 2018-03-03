@@ -1,4 +1,4 @@
-[![logo](https://raw.githubusercontent.com/Team5173/Mallard-Discord/master/Site/logo.png)](https://discordapp.com/api/oauth2/authorize?client_id=419157772421300235&permissions=384000&scope=bot)
+[![logo](https://raw.githubusercontent.com/Team5173/Mallard-Discord/master/Site/logo.png)]https://discordapp.com/api/oauth2/authorize?client_id=397275687968571393&permissions=523328&scope=bot)
 
 # About
 Mallard is an FIRST Robotics competition based Discord bot maintained by Team 5173, The Robohawks, that uses data from The Blue Alliance in order to get helpful information for team's, such as upcoming events, event rankings, match summaries, and much much more.
