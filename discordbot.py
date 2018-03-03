@@ -14,7 +14,7 @@ with open('TBAkey.txt', 'r+') as myfile:
 
 base_url = 'https://www.thebluealliance.com/api/v3'
 header = {'X-TBA-Auth-Key': TBAkey}
-team = str()
+teams = str()
 
 
 def messageTokenizor(message):
@@ -151,6 +151,10 @@ def teamInfo(team_key):
     Requires: 
     Effects: 
     '''
+
+
+
+    
     #Gets the next event for the given team
     event = getNextEvent(team_key)
     #Contsructs a message about the given team's stats
@@ -204,7 +208,7 @@ def nextMatchInfo(match):
     '''
     event = getNextEvent(team)
 
-    embed=discord.Embed(title='**' + team[3:] + ' next match, number ' + str(match['match_number']) + '**', color=0x1cead6)
+    embed=discord.Embed(title='**' + team[3:] + ' next match, number ' + str(match['match_number']) + '**', color=0xea0006)
     embed.add_field(name='__Time Till Match:__', value=getTimeTillMatch(match), inline=False)
     embed.add_field(name='__Match Start Time:__', value=str(getMatchTime(match)), inline=True)
     #embed.add_field(name='Match Start Date', value=xxxx-xx-xx, inline=True)
@@ -214,13 +218,6 @@ def nextMatchInfo(match):
     embed.add_field(name='__Match Prediction:__', value=predictionMessage(matchPrediction(match)), inline=False)
 
     return embed
-"""  
-    message = ('Team ' + team[3:] + '\'s next match, number ' + str(match['match_number']) + ' at '
-    + event['name'] + ', begins in ' + getTimeTillMatch(match) + ' at ' + str(getMatchTime(match))
-    + ' on the ' + getAllianceColor(match) + ' alliance with alliance members ' + getAllianceMembers(match)
-    + ' against' + oppositeAlliance(match) + predictionMessage(matchPrediction(match)))
-    return message
-"""
     
 def nextEventInfo():
     '''
@@ -530,15 +527,17 @@ async def on_message(message):
         await client.send_message(message.channel, teamInfo(team))
     if message.content.startswith('mal! match result'):
         text = messageTokenizor(message.content)
-        match_key = text[5]
+        match_key = text[4]
         await client.send_message(message.channel, getMatchResult(match_key))
     if message.content.startswith('mal! countdown'):
         await client.send_message(message.channel, timeTillEvents(team))
     if message.content.startswith('mal! set team'):
         text = messageTokenizor(message.content)
-        team = text[5]
+        team = text[4]
         team = 'frc' + team
-        await client.send_message(message.channel, 'Team was set to ' + text[5] + ', ' + teamName(team))
+        embed=discord.Embed(description= 'Team was set to ' + text[4], color=0xea0006)
+        embed.set_author(name=teamName(team))
+        await client.send_message(message.channel, embed=embed)
     if message.content.startswith('mal! next event'):
         await client.send_message(message.channel, nextEventInfo())
     if message.content.startswith('mal! next match'):
