@@ -5,7 +5,7 @@ Mallard is a FIRST Robotics competition based Discord bot maintained by Team 517
 # Commands
 
 |**Commands**                | **Description**|                                                      
----|:---
+:---|:---
 [!mal set team [team number]](https://raw.githubusercontent.com/Team5173/Mallard-Discord/master/Site/setteam.png)|Sets the server's registered FRC team
 [!mal district](https://raw.githubusercontent.com/Team5173/Mallard-Discord/master/Site/district.png)|Gives information on the team's district
 [!mal team stats](https://raw.githubusercontent.com/Team5173/Mallard-Discord/master/Site/teamstats.png) |Stats of registered team
