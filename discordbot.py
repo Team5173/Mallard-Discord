@@ -218,6 +218,25 @@ def nextMatchInfo(match):
     embed.add_field(name='__Match Prediction:__', value=predictionMessage(matchPrediction(match)), inline=False)
 
     return embed
+
+def matchInfo(match, event_key):
+    embed=discord.Embed(title="EVENT_NAME, match number: MATCH_NUMBER", description="Match number MATCH_NUMBER, at EVENT_NAME event.", color=0x45fc07)
+    embed.set_thumbnail(url="https://raw.githubusercontent.com/Team5173/Mallard-Discord/master/frc-game.png")
+    embed.add_field(name='Competition Level', value=match['comp_level'], inline=False)
+    embed.add_field(name='Winner', value=match['winning_alliance'], inline=True)
+    embed.add_field(name='Score', value='Red ' + str(match['alliances']['red']['score']) + '-' + 'Blue ' + str(match['alliances']['blue']['score']), inline=True)
+    embed.add_field(name='Red Alliance: ', value=getAllianceMembersEmbed(match, 'red', event_key), inline=True)
+    embed.add_field(name='Blue Alliance: ', value=getAllianceMembersEmbed(match, 'blue', event_key), inline=True)
+    if type(match['videos']) is list:
+        embed.add_field(name='Video: ', value='No videos available', inline=True)
+    else:
+        embed.add_field(name='Video: ', value='www.youtube.com/watch?v=' + str(match['videos']['key']), inline=True)
+    return embed
+
+
+def getMatch(match_key):
+    match = requests.get(base_url + '/match/' + match_key, header).json()
+    return match
     
 def nextEventInfo():
     '''
@@ -252,10 +271,11 @@ def matchPrediction(match):
     Effects: 
     '''
     event = getNextEvent(team)
-    #event_key = event['key']
-    event_key = '2017miwmi'
+    event_key = event['key']
+    #event_key = '2017miwmi'
     match_key = match['key']
     predictions = requests.get(base_url + '/event/' + event_key + '/predictions', header).json()
+    print(predictions)
     if predictions is None:
         return 'none'
     
@@ -319,6 +339,25 @@ def getAllianceMembers(match):
                      + teamName(match['alliances']['red']['team_keys'][i])  + ', '
                      + getEventRank(match['alliances']['red']['team_keys'][i]))
     return alli
+
+def getAllianceMembersEmbed(match, color, event_key):
+    '''
+    Requires: 
+    Modifies: Nothing
+    Effects: 
+    '''
+    alli = str()
+    if color == 'blue':
+        for i in range(len(match['alliances']['blue']['team_keys'])):
+            alli += (' Team ' + match['alliances']['blue']['team_keys'][i][3:] + ', '
+                     + teamName(match['alliances']['blue']['team_keys'][i])  + ', '
+                     + str(getEventRankEmbed(match['alliances']['blue']['team_keys'][i], event_key)))            
+    else:
+        for i in range(len(match['alliances']['red']['team_keys'])):
+            alli += (' Team ' + match['alliances']['red']['team_keys'][i][3:] + ', '
+                     + teamName(match['alliances']['red']['team_keys'][i])  + ', '
+                     + str(getEventRankEmbed(match['alliances']['red']['team_keys'][i], event_key)))
+    return alli
         
 def oppositeAlliance(match):
     '''
@@ -352,16 +391,16 @@ def getNextMatch(team_key):
     now = datetime.datetime.now()
     stamp = int(now.timestamp())
     times = {}
-    #key = event['key']
-    key = '2017miwmi'
+    key = event['key']
+    #key = '2017miwmi'
     team_matches = requests.get(base_url + '/team/' + team + '/event/' + key + '/matches', header).json()
     for i in range(len(team_matches)):
         match_times.append(team_matches[i]['predicted_time'])
     for time in range(len(match_times)):
-        times[match_times[time] - stamp] = team_matches[i]
-    smallest = stamp
+        times[match_times[time] - stamp] = team_matches[time]
+    smallest = stamp    
     for key in times.keys():
-        if (key < smallest):
+        if (key < smallest) and (key > 0):
             smallest = key
     return times[smallest]
 
@@ -376,7 +415,7 @@ def oppositeColor(color):
     else:
         return 'red'
 
-def getMatchResult(match):
+def getMatchResult(match_key):
     '''
     Requires: 
     Modifies: Nothing
@@ -384,8 +423,10 @@ def getMatchResult(match):
     '''
     members = str()
     enemy = str()
+    match = requests.get(base_url + '/match/' + match_key, header).json()
+    print(match)
     match_num = match['match_number']
-    winningAlliance = match['winning-alliance']
+    winningAlliance = match['winning_alliance']
     for i in range(len(match['alliances'][winningAlliance]['team_keys'])):
         members += (' ' + match['alliances'][winningAlliance]['team_keys'][i][3:] + ', '
                     + ' rank ' + getEventRank(match['alliances'][winningAlliance]['team_keys'][i]))
@@ -394,14 +435,18 @@ def getMatchResult(match):
                     + ' rank ' + getEventRank(match['alliances'][oppositeColor(winningAlliance)]['team_keys'][i]))
 
     if winningAlliance == 'blue':
-        score = match['alliances'][winningAlliance]['score'] + '-' + match['alliances']['red']['score']
+        score = str(match['alliances'][winningAlliance]['score']) + '-' + str(match['alliances']['red']['score'])
     else:
-        score = match['alliances'][winningAlliance]['score'] + '-' + match['alliances']['blue']['score']
+        score = str(match['alliances'][winningAlliance]['score']) + '-' + str(match['alliances']['blue']['score'])
                
-    message = ('Match number ' + match_num + ' concluded with a ' + winningAlliance
-               + ' win, with alliance members' + members + 'victorious over '
-               + oppositeColor(winningAlliance) + ' alliance, with members ' + enemy)
+    message = ('Match number ' + str(match_num) + ' concluded with a ' + str(winningAlliance)
+               + ' win, with alliance members' + str(members) + 'victorious over '
+               + oppositeColor(winningAlliance) + ' alliance, with members ' + str(enemy))
     return message
+
+def getEventRankEmbed(team_key, event_key):
+    event = requests.get(base_url + '/team/' + team_key + '/event/' + event_key + '/status', header).json()
+    return event['qual']['ranking']['rank']
                
 def getEventRank(team_key):
     '''
@@ -410,8 +455,8 @@ def getEventRank(team_key):
     Effects: 
     '''
     event = getNextEvent(team_key)
-    #eventKey = event['key']
-    eventKey = '2017miwmi'
+    eventKey = event['key']
+    #eventKey = '2017miwmi'
     rankings = requests.get(base_url + '/event/' + eventKey + '/rankings', header).json()
     for i in range(len(rankings['rankings'])):
         if rankings['rankings'][i]['team_key'] == team_key:
@@ -448,8 +493,8 @@ def getDistrictRank(team_key):
     Effects: 
     '''
     #Gets team's district
-    #district_key = getTeamDistrict(team_key)
-    district_key = '2017fim'
+    district_key = getTeamDistrict(team_key)
+    #district_key = '2017fim'
     #Gets ranks in district
     rankings = requests.get(base_url + '/district/' + district_key + '/rankings', header).json()
     #return team's rank in district
@@ -478,7 +523,7 @@ def getNextEvent(team_key):
                 cD = int(cD)
                 eD = str(event_month) + str(event_day)
                 eD = int(eD)
-                if cD < eD:
+                if (cD < eD) or (cD == eD) or (cD == eD -1):
                     dates[eD] = team_events[year]
                     dt.append(eD)
     smallest = 1231
@@ -528,7 +573,8 @@ async def on_message(message):
     if message.content.startswith('mal! match result'):
         text = messageTokenizor(message.content)
         match_key = text[4]
-        await client.send_message(message.channel, getMatchResult(match_key))
+        event_key = text[4].split('_')[0]
+        await client.send_message(message.channel, embed=matchInfo(getMatch(match_key), event_key))
     if message.content.startswith('mal! countdown'):
         await client.send_message(message.channel, timeTillEvents(team))
     if message.content.startswith('mal! set team'):
